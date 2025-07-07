@@ -8,31 +8,46 @@ import requests
 from httpx import AsyncClient, get, post
 import time
 import re
+from dotenv import load_dotenv
+import os
 
-bot = Client("TOKEN")
+load_dotenv()
 
-main_key = ReplyKeyboard(['ثبت محصول جدید➕','حذف محصول➖'],['لیست محصولات من📃'],['جستجوی محصول 🧺'],['حساب کاربری🔍'],['قوانین و مقررات ⚖','پشتیبانی👮‍♂️'])
-admin_key = ReplyKeyboard(['ثبت محصول جدید➕','حذف محصول➖'],['لیست محصولات من📃'],['جستجوی محصول 🧺'],['حساب کاربری🔍','پنل مدیریت👨‍💼'],['قوانین و مقررات ⚖'])
+TOKEN = os.getenv('TOKEN')
+ADMIN_ID = os.getenv('ADMIN_ID')
+
+bot = Client(TOKEN)
+
+main_key = ReplyKeyboard(['ثبت محصول جدید➕', 'حذف محصول➖'], ['لیست محصولات من📃'], [
+                         'جستجوی محصول 🧺'], ['حساب کاربری🔍'], ['قوانین و مقررات ⚖', 'پشتیبانی👮‍♂️'])
+admin_key = ReplyKeyboard(['ثبت محصول جدید➕', 'حذف محصول➖'], ['لیست محصولات من📃'], [
+                          'جستجوی محصول 🧺'], ['حساب کاربری🔍', 'پنل مدیریت👨‍💼'], ['قوانین و مقررات ⚖'])
 action_key = ReplyKeyboard(['بازگشت🔙'])
+
 products = {}
 payments = {}
 userid = {}
 messages = {}
+
 data_file = "data.json"
-admin = "YOUR_REAL_CHAT_ID"
+admin = ADMIN_ID
 category = {
     'واسطه گری فایل': 'sendDoc',
     'واسطه گری اکانت': 'between',
     'وب سرویس': 'api'
 }
+
+
 def save_product(userid, product_id):
     products[str(userid)] = str(product_id)
+
 
 def find_product(userid):
     return products[str(userid)]
 
+
 def find_byname(name):
-    with open(data_file,'r') as file:
+    with open(data_file, 'r') as file:
         data = json.load(file)
     results = []
     for i in data['products']:
@@ -40,16 +55,19 @@ def find_byname(name):
             results.append(i)
     return results
 
+
 def unique(data):
-    id = random.randint(1000,10000)
+    id = random.randint(1000, 10000)
     prods = data['products'].keys()
     while id in prods:
         id = random.randint(1000, 10000)
     return id
 
+
 @bot.on_message(~is_joined(5802996341) & private & ~successful_payment)
 async def not_joined(*, client, message):
     await message.reply("برای استفاده از ربات باید وارد کانال های زیر شوید 👇\n بعد از جوین شدن، ربات را دوباره [استارت](send:/start) کنید", InlineKeyboard([('کانال توسعه دهنده', 'SACChannel', 'https://ble.ir/sacgroup')]))
+
 
 @bot.on_command(private)
 async def testapi(id=-1, *, client, message):
@@ -61,7 +79,7 @@ async def testapi(id=-1, *, client, message):
     else:
         password = data['products'][id]['password']
         apiurl = data['products'][id]['host']
-        apiparams = {'password':password}
+        apiparams = {'password': password}
         r = requests.get(url=apiurl, params=apiparams)
         res = r.json()
         if res['ok']:
@@ -71,12 +89,13 @@ async def testapi(id=-1, *, client, message):
             await client.send_message(chatid, f'عملیات ساخت توکن ناموفق بود❌\n\n هرچه زودتر با پشتیبانی ربات تماس بگیرید')
         await message.reply(f"{res}")
 
+
 @bot.on_command(private)
 async def product_info(id=0, *, client, message):
     if id == 0:
         await message.reply("لطفا لینک را به درستی ارسال کنید")
     else:
-        with open(data_file,'r') as file:
+        with open(data_file, 'r') as file:
             data = json.load(file)
         name = data['products'][id]['name']
         description = data['products'][id]['description']
@@ -91,9 +110,10 @@ async def product_info(id=0, *, client, message):
         user = await client.get_chat(int(author))
         await message.reply(f"نام محصول : {name} \n توضیحات : \n {description}\n قیمت : {price} ریال \n\n نوع محصول : {mode} \n\nفروشنده : {user}", InlineKeyboard([('خرید 🛒', f"buy:{id}")]))
 
+
 @bot.on_callback_query(private & regex("^buy:"))
 async def buy_product(callback_query):
-    with open(data_file,'r') as file:
+    with open(data_file, 'r') as file:
         data = json.load(file)
         id = str(callback_query.data.split(':')[1])
     name = data['products'][id]['name']
@@ -103,7 +123,8 @@ async def buy_product(callback_query):
     card = data['card'][str(author)]
     if len(card) == 16 and card.isnumeric():
         with AsyncClient() as _cli:
-            res = _cli.get("https://aladdin4api.pythonanywhere.com/card", params={'token':'aladdin4api token (token can be bought from @CodeWizaard)', 'card': card})
+            res = _cli.get("https://aladdin4api.pythonanywhere.com/card", params={
+                           'token': 'aladdin4api token (token can be bought from @CodeWizaard)', 'card': card})
             if res.status_code == 200:
                 cardr = res.json()
                 if cardr['result']['isValid']:
@@ -129,7 +150,7 @@ async def verify_wallet_payment(checkout: PreCheckoutQuery):
 
 
 @bot.on_callback_query(private & regex("^wallet:"))
-async def buy_with_wallet(callback_query:CallbackQuery):
+async def buy_with_wallet(callback_query: CallbackQuery):
     with open(data_file, 'r') as file:
         data = json.load(file)
         id = str(callback_query.data.split(':')[1])
@@ -142,21 +163,22 @@ async def buy_with_wallet(callback_query:CallbackQuery):
         await bot.send_message(author, "فردی درحال خرید از شما با کیف پول است...")
         userid[str(id)] = str(callback_query.author.id)
         await bot.send_invoice(
-        chat_id=callback_query.author.id,
-        title=name,
-        description=description,
-        payload=f"wallet:{id}",
-        provider_token=str(wallet),
-        prices=[LabeledPrice(label=f"{name}", amount=int(price))]
-    )   
+            chat_id=callback_query.author.id,
+            title=name,
+            description=description,
+            payload=f"wallet:{id}",
+            provider_token=str(wallet),
+            prices=[LabeledPrice(label=f"{name}", amount=int(price))]
+        )
         payments[str(callback_query.author.id)] = str(id)
     else:
         await callback_query.answer("فروشنده این محصول کیف پول خود را ثبت نکرده")
 
+
 @bot.on_message(successful_payment)
-async def show_payment(* , client, message):
+async def show_payment(*, client, message):
     id = message.successful_payment.invoice_payload
-    with open(data_file,'r') as file:
+    with open(data_file, 'r') as file:
         data = json.load(file)
     author = data['products'][id]['author']
     chatid = userid[str(id)]
@@ -168,7 +190,8 @@ async def show_payment(* , client, message):
         file = open(data_file, 'w')
         data['payments'][str(chatid)] = {}
         data['payments'][str(chatid)]['product'] = id
-        data['payments'][str(chatid)]['price'] = message.successful_payment.total_amount
+        data['payments'][str(
+            chatid)]['price'] = message.successful_payment.total_amount
         data['payments'][str(chatid)]['user'] = str(chatid)
         data['payments'][str(chatid)]['author'] = str(author)
         json.dump(data, file, indent=4)
@@ -180,7 +203,7 @@ async def show_payment(* , client, message):
     elif data['products'][id]['mode'] == 'api':
         password = data['products'][id]['password']
         apiurl = data['products'][id]['host']
-        apiparams = {'password':password}
+        apiparams = {'password': password}
         r = requests.get(url=apiurl, params=apiparams)
         res = r.json()
         if res['ok']:
@@ -193,10 +216,12 @@ async def show_payment(* , client, message):
     await client.send_message(chatid, f"مبلغ خرید شما، مستقیما به حساب ثبت شده توسط فروشنده واریز شده، و پشتیبانی هیچ مسئولیتی راجع به آن قبول نمیکند\n\n اگر مشکل فنی ای در کاربری ربات حین پرداخت ایجاد شده، از طریق پشتیبانی به ما اطلاع دهید\n در غیر این صورت بقیه مشکل ها را با فروشنده در میان بگذارید : {user}\n برای گزارش این محصول لطفا با پشتیبانی در ارتباط باشید")
     await client.send_message(author, f"{customer} از شما خرید کرد 🛍\n محصول خریداری شده {data['products'][id]['name']} \n\n منم کاری که باید انجام میدادمو انجام دادم\n بازار باشه😉")
 
+
 @bot.on_message(private & equals('پشتیبانی👮‍♂️'))
 async def send_support(*, client, message):
     await message.reply("سلام، پشتیبانی کاسب هستم 👋\n مشکلی که داری رو در قالب یک پیام کامل ارسال کن تا به تیم منتقل کنم", InlineKeyboard([('بازگشت 🔙', 'Back')]))
     message.author.set_state("SUPPORT")
+
 
 @bot.on_callback_query(at_state("SUPPORT"))
 async def going_back_from_support(callback_query):
@@ -205,6 +230,7 @@ async def going_back_from_support(callback_query):
         callback_query.author.del_state()
     else:
         pass
+
 
 @bot.on_message(private & at_state("SUPPORT"))
 async def send_to_support(*, client, message):
@@ -218,6 +244,7 @@ async def send_to_support(*, client, message):
     finally:
         message.author.del_state()
 
+
 @bot.on_message(reply)
 async def check_and_send_support(*, client, message):
     userId = "0"
@@ -227,6 +254,7 @@ async def check_and_send_support(*, client, message):
         await bot.send_message(userId, f'پیام دریافت شده از پشتیبانی :\n\n {message.text}')
     else:
         pass
+
 
 @bot.on_command(private)
 async def start(referrer=0, *, client, message):
@@ -266,6 +294,7 @@ async def start(referrer=0, *, client, message):
     else:
         await message.reply("سلام🕵️‍♀️\n من شمارو میشناسم؟\n اها، شما ادمین هستید❕\n بفرمایید، در خدمتم", admin_key)
 
+
 @bot.on_message(private & equals('پیام همگانی'))
 async def all_anonce(*, client, message):
     if message.chat.id == admin:
@@ -273,6 +302,7 @@ async def all_anonce(*, client, message):
         message.author.set_state("ALLMESSAGE")
     else:
         await message.reply("شما دسترسی به این دستور ندارید")
+
 
 @bot.on_message(private & at_state("ALLMESSAGE"))
 async def send_all(*, client, message):
@@ -301,6 +331,7 @@ async def send_all(*, client, message):
         await message.reply("برگشتیم", main_key)
         message.author.del_state()
 
+
 @bot.on_message(equals('پیام به کاربر'))
 async def send_to_user_message(*, client, message):
     with open(data_file, 'r') as file:
@@ -310,6 +341,7 @@ async def send_to_user_message(*, client, message):
         message.author.set_state("GETUSERID")
     else:
         await message.reply('شما دسترسی به این دستور ندارید\n با تشکر')
+
 
 @bot.on_message(at_state("GETUSERID"))
 async def save_user_id(*, client, message):
@@ -322,6 +354,7 @@ async def save_user_id(*, client, message):
     else:
         await message.reply("این کاربر در ربات وجود ندارد")
 
+
 @bot.on_message(at_state("GETMESSAGEUSER"))
 async def send_message_to_user(*, client, message):
     with open(data_file, 'r') as file:
@@ -330,16 +363,18 @@ async def send_message_to_user(*, client, message):
     chat_id = messages[str(message.chat.id)]
     message_text = message.text
     await client.send_message(chat_id, message_text)
-    await client.edit_message_text(msg.chat.id, msg.id,'پیام با موفقیت ارسال شد!')
+    await client.edit_message_text(msg.chat.id, msg.id, 'پیام با موفقیت ارسال شد!')
     message.author.del_state()
 
+
 @bot.on_message(equals('جستجوی محصول 🧺'))
-async def search_product(*, client:Client, message: Message):
-    await message.reply("در چه دسته بندی به دنبال محصول میگردید؟", ReplyKeyboard(['واسطه گری فایل'],['واسطه گری اکانت'],['وب سرویس']))
+async def search_product(*, client: Client, message: Message):
+    await message.reply("در چه دسته بندی به دنبال محصول میگردید؟", ReplyKeyboard(['واسطه گری فایل'], ['واسطه گری اکانت'], ['وب سرویس']))
     message.author.set_state("SEARCHFILTER")
 
+
 @bot.on_message(at_state("SEARCHFILTER"))
-async def filter_search(*, client:Client, message:Message):
+async def filter_search(*, client: Client, message: Message):
     with open(data_file, 'r') as file:
         data = json.load(file)
     reply = ReplyKeyboard()
@@ -354,6 +389,7 @@ async def filter_search(*, client:Client, message:Message):
     else:
         await message.reply("لطفا از دسته بندی های خود ربات استفاده کنید")
 
+
 @bot.on_message(private & at_state("SEARCHPRO") & equals('بازگشت🔙'))
 async def back(*, client, message):
     await message.reply("بازگشت به صفحه اصلی... ✈", main_key)
@@ -361,7 +397,7 @@ async def back(*, client, message):
 
 
 @bot.on_message(at_state("SEARCHPRO"))
-async def search_product_view(*, client:Client, message:Message):
+async def search_product_view(*, client: Client, message: Message):
     with open(data_file, 'r') as file:
         userList = json.load(file)
     res = find_byname(message.text)
@@ -381,8 +417,9 @@ async def search_product_view(*, client:Client, message:Message):
     await message.reply("در نظر داشته باشید که اگر بیهوده درخواست بازبینی محصولی را بدهید، حساب شما در ربات مسدود خواهد شد", main_key)
     message.author.del_state()
 
+
 @bot.on_callback_query(regex("^report:"))
-async def submit_report_request(callback_query:CallbackQuery):
+async def submit_report_request(callback_query: CallbackQuery):
     with open(data_file, 'r') as file:
         data = json.load(file)
     id = callback_query.data.split(':')[1]
@@ -400,8 +437,9 @@ async def submit_report_request(callback_query:CallbackQuery):
 ''', InlineKeyboard([('مسدود کردن فروشنده', f'ban:{author}')]))
     await callback_query.answer("با تشکر از همکاری شما 🫂\n درخواست بازبینی محصول با موفقیت به ادمین های ربات ارسال شد")
 
+
 @bot.on_callback_query(private & regex('^ban:'))
-async def ban_from_inline(callback_query:CallbackQuery):
+async def ban_from_inline(callback_query: CallbackQuery):
     with open(data_file, 'r') as file:
         data = json.load(file)
     seller = callback_query.data.split(':')[1]
@@ -413,6 +451,7 @@ async def ban_from_inline(callback_query:CallbackQuery):
     await bot.send_message(seller, '''با عرض پوزش 👛
     ناچار به این هستیم که اعلام کنیم شما به علت رعایت نکردن قوانین ربات،
     از ربات مسدود شدید''')
+
 
 @bot.on_message(private & equals('لیست محصولات من📃'))
 async def prod_list(*, client, message):
@@ -428,10 +467,12 @@ async def prod_list(*, client, message):
     await message.reply("لیست محصولات شما : ", reply)
     message.author.set_state("LIST")
 
+
 @bot.on_message(private & at_state("LIST") & equals('بازگشت🔙'))
 async def back(*, client, message):
     await message.reply("بازگشت به صفحه اصلی... ✈", main_key)
     message.author.del_state()
+
 
 @bot.on_message(private & at_state("LIST"))
 async def prod_info(*, client, message):
@@ -453,20 +494,23 @@ async def prod_info(*, client, message):
     await message.reply(f"اطلاعات محصول شما : \n\n نام محصول : {name}\n\n توضیحات : {description} \n\n قیمت محصول : {price} ریال\n\n شناسه فروشنده : {author} \n\n نوع محصول : {mode} \n\nلینک اشتراک گذاری : {link}", main_key)
     message.author.del_state()
 
+
 @bot.on_message(private & equals('پنل مدیریت👨‍💼'))
 async def panel(*, client, message):
     if int(message.chat.id) == admin:
-        await message.reply("به پنل مدیریت خوش اومدید 👮‍♂️", ReplyKeyboard(['دیدن محصولات ثبت شده'],['مسدود کردن کاربر','باز کردن حساب'],['دیدن اطلاعات کاربر'],['پیام همگانی','پیام به کاربر'],['بازگشت🔙']))
+        await message.reply("به پنل مدیریت خوش اومدید 👮‍♂️", ReplyKeyboard(['دیدن محصولات ثبت شده'], ['مسدود کردن کاربر', 'باز کردن حساب'], ['دیدن اطلاعات کاربر'], ['پیام همگانی', 'پیام به کاربر'], ['بازگشت🔙']))
     else:
         await message.reply("شما دسترسی به این دستور ندارید")
+
 
 @bot.on_message(private & equals('بازگشت🔙'))
 async def back_main(*, client, message):
     await message.reply("بازگشت به صفحه اصلی... ✈", main_key)
     message.author.del_state()
 
+
 @bot.on_message(private & equals('مسدود کردن کاربر'))
-async def ban_bot_user(*, client:Client, message:Message):
+async def ban_bot_user(*, client: Client, message: Message):
     with open(data_file, 'r') as file:
         data = json.load(file)
     if data['users'][str(message.author.id)] == 'Admin':
@@ -486,6 +530,7 @@ async def admin_list(*, client, message):
     await message.reply("لیست محصولات ثبت شده : ", reply)
     message.author.set_state("ADMINLIST")
 
+
 @bot.on_message(at_state("ADMINLIST"))
 async def admin_product(*, client, message):
     with open(data_file, 'r') as file:
@@ -497,8 +542,9 @@ async def admin_product(*, client, message):
     price = userList['products'][id]['price']
     link = client.create_referral_link("product_info", id)
     author = userList['products'][id]['author']
-    await message.reply(f"اطلاعات محصول شما : \n\n نام محصول : {name}\n\n توضیحات : {description} \n\n قیمت محصول : {price} ریال\n\n شناسه فروشنده : {author} \n\n لینک اشتراک گذاری : {link}", InlineKeyboard([('حذف محصول', f'del:{id}'),('دیدن جزئیات', f'see:{id}')],[('مسدود کردن کاربر', f'block:{author}')]))
+    await message.reply(f"اطلاعات محصول شما : \n\n نام محصول : {name}\n\n توضیحات : {description} \n\n قیمت محصول : {price} ریال\n\n شناسه فروشنده : {author} \n\n لینک اشتراک گذاری : {link}", InlineKeyboard([('حذف محصول', f'del:{id}'), ('دیدن جزئیات', f'see:{id}')], [('مسدود کردن کاربر', f'block:{author}')]))
     message.author.set_state("ADMININFO")
+
 
 @bot.on_callback_query(at_state("ADMININFO") & regex("^see:"))
 async def see_saves_in_product_admin(callback_query):
@@ -546,15 +592,18 @@ async def delete_prod(*, client, message):
     await message.reply("محصولی که میخواهید حذف کنید را انتخاب کنید", reply)
     message.author.set_state("DELETE")
 
+
 @bot.on_message(at_state("DELETE") & equals('بازگشت🔙'))
 async def back_del(*, client, message):
     await message.reply("بازگشت به صفحه اصلی... ✈", main_key)
     message.author.del_state()
 
+
 @bot.on_message(at_state("DELETE"))
 async def delete_product(*, client, message):
-    await message.reply("ایا از حذف این محصول اطمینان دارید؟\n پس از حذف هیچ کس قادر به دیدن این محصول نیست!", InlineKeyboard([('نه، برگرد','no')],[('اره، پاکش کن', message.text)]))
+    await message.reply("ایا از حذف این محصول اطمینان دارید؟\n پس از حذف هیچ کس قادر به دیدن این محصول نیست!", InlineKeyboard([('نه، برگرد', 'no')], [('اره، پاکش کن', message.text)]))
     message.author.set_state("CONFIRM")
+
 
 @bot.on_callback_query(at_state("CONFIRM"))
 async def del_confirm(callback_query):
@@ -573,7 +622,6 @@ async def del_confirm(callback_query):
         callback_query.author.del_state()
 
 
-
 @bot.on_message(private & equals('حساب کاربری🔍'))
 async def profile(*, client, message):
     with open(data_file, 'r') as file:
@@ -587,7 +635,8 @@ async def profile(*, client, message):
         card = "اطلاعاتی ثبت نشده!"
     if wallet == "":
         wallet = "اطلاعاتی ثبت نشده!"
-    await message.reply(f"حساب کاربری شما 🧾\n 🚹 نام کاربری : {message.chat.username}\n\n\n 📞 شماره تلفن : {phone}\n\n\n 💳 شماره کارت : {card} \n\n\n 👛 توکن کیف پول : {wallet}", InlineKeyboard([('ارسال شماره تلفن 🤙', 'phonesend')],[('ثبت شماره کارت 💲', 'cardNO'),('اتصال کیف پول 💰', 'walletToken')]))
+    await message.reply(f"حساب کاربری شما 🧾\n 🚹 نام کاربری : {message.chat.username}\n\n\n 📞 شماره تلفن : {phone}\n\n\n 💳 شماره کارت : {card} \n\n\n 👛 توکن کیف پول : {wallet}", InlineKeyboard([('ارسال شماره تلفن 🤙', 'phonesend')], [('ثبت شماره کارت 💲', 'cardNO'), ('اتصال کیف پول 💰', 'walletToken')]))
+
 
 @bot.on_callback_query(private)
 async def callback_query(callback_query):
@@ -600,6 +649,7 @@ async def callback_query(callback_query):
     elif callback_query.data == 'walletToken':
         await callback_query.answer("هنوز نسخه نهایی پرداخت با کیف پول توسط بله منتشر نشده\n به زودی...")
 
+
 @bot.on_message(at_state("PHONESEND") & contact)
 async def save_phone(*, client, message):
     with open(data_file, 'r') as file:
@@ -610,6 +660,7 @@ async def save_phone(*, client, message):
     file.close()
     await message.reply("شماره تلفن شما با موفقیت ثبت شد ✅", main_key)
     message.author.del_state()
+
 
 @bot.on_message(private & at_state("CARDSEND"))
 async def save_card(*, client, message):
@@ -636,7 +687,6 @@ async def save_card(*, client, message):
         await message.reply("ارتباط با سرور برای بررسی شماره کارت برقرار نشد، لطفا لحظاتی دیگر دوباره امتحان کنید")
 
 
-
 @bot.on_message(private & equals('ثبت محصول جدید➕'))
 async def add_prod(*, client, message):
     with open(data_file, 'r') as file:
@@ -649,9 +699,10 @@ async def add_prod(*, client, message):
         await message.reply("نام محصول مورد نظر را وارد کنید :")
         message.author.set_state("NAME")
 
+
 @bot.on_message(private & at_state("NAME"))
 async def name(*, client, message):
-    with open(data_file,'r') as file:
+    with open(data_file, 'r') as file:
         userList = json.load(file)
     id = unique(userList)
     file = open(data_file, 'w')
@@ -663,9 +714,10 @@ async def name(*, client, message):
     save_product(message.chat.id, id)
     message.author.set_state("DESC")
 
+
 @bot.on_message(private & at_state("DESC"))
 async def description(*, client, message):
-    with open(data_file,'r') as file:
+    with open(data_file, 'r') as file:
         userList = json.load(file)
         id = find_product(message.chat.id)
         file = open(data_file, 'w')
@@ -682,9 +734,10 @@ async def description(*, client, message):
         await message.reply("قیمت محصول خود را وارد کنید : (به ریال)", main_key)
         message.author.set_state("PRICE")
 
+
 @bot.on_message(private & at_state("PRICE"))
 async def price(*, client, message):
-    with open(data_file,'r') as file:
+    with open(data_file, 'r') as file:
         userList = json.load(file)
     price = message.text
     if price.isnumeric():
@@ -694,15 +747,17 @@ async def price(*, client, message):
         userList['products'][str(id)]['author'] = str(message.chat.id)
         json.dump(userList, file, indent=4)
         file.close()
-        reply = ReplyKeyboard(['ثبت نام (دریافت اطلاعات)'],['واسطه‌گری'],['ارسال فایل'])
+        reply = ReplyKeyboard(['ثبت نام (دریافت اطلاعات)'], [
+                              'واسطه‌گری'], ['ارسال فایل'])
         await message.reply("محصول شما چه نوع است؟", reply)
         message.author.set_state("MODE")
     else:
         await message.reply("فقط عدد بفرستید")
 
+
 @bot.on_message(at_state("MODE"))
 async def set_mode(*, client, message):
-    with open(data_file,'r') as file:
+    with open(data_file, 'r') as file:
         userList = json.load(file)
     id = find_product(message.author.id)
     file = open(data_file, 'w')
@@ -719,9 +774,10 @@ async def set_mode(*, client, message):
     json.dump(userList, file, indent=4)
     file.close()
 
+
 @bot.on_message(at_state("FILE") & document)
 async def saverfile(*, client, message):
-    with open(data_file,'r') as file:
+    with open(data_file, 'r') as file:
         userList = json.load(file)
     id = find_product(message.author.id)
     file = open(data_file, 'w')
@@ -731,9 +787,10 @@ async def saverfile(*, client, message):
     await message.reply("محصول شما با موفقیت ثبت شد", main_key)
     message.author.del_state()
 
+
 @bot.on_message(at_state("USERNAME"))
 async def username_save(*, client, message):
-    with open(data_file,'r') as file:
+    with open(data_file, 'r') as file:
         userList = json.load(file)
     id = find_product(message.author.id)
     file = open(data_file, 'w')
@@ -743,9 +800,10 @@ async def username_save(*, client, message):
     await message.reply("رمز عبور حساب را ارسال کنید : ")
     message.author.set_state("PASSWORD")
 
+
 @bot.on_message(at_state("PASSWORD"))
 async def saver_pssword(*, client, message):
-    with open(data_file,'r') as file:
+    with open(data_file, 'r') as file:
         userList = json.load(file)
     id = find_product(message.author.id)
     file = open(data_file, 'w')
