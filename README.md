@@ -1,4 +1,4 @@
-[![KasebBot](https://img.shields.io/badge/KasebBot-v1.0-blue)](https://github.com/code-wizaard/KasebBot)
+[![KasebBot](https://img.shields.io/badge/KasebBot-v1.3-blue)](https://github.com/code-wizaard/KasebBot)
 [![Python](https://img.shields.io/badge/Python-3.x-yellow)](https://www.python.org/)
 [![License](https://img.shields.io/badge/License-MIT-green)](LICENSE)
 
